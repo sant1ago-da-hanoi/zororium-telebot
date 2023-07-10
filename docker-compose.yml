@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  webserver:
+    container_name: ZoroServer
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: php artisan serve --host=0.0.0.0
+    volumes:
+      - .:/app
+    ports:
+      - 8001:8000
+
+  task:
+    container_name: ZoroTask
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: php artisan short-schedule:run >> /dev/null 2>&1
+    depends_on:
+      - db
+
+  queue:
+    container_name: ZoroQueue
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: php artisan queue:work
+    depends_on:
+      - db
+
+  db:
+    platform: linux/x86_64
+    image: mariadb:11
+    container_name: ZoroDB
+    environment:
+      MYSQL_DATABASE: robin
+      MARIADB_ROOT_PASSWORD: root
+      MYSQL_TCP_PORT: 3306
+    volumes:
+      # - db:/var/lib/mysql
+      - ./mariadb/data:/var/lib/mysql/data/
+      - ./mariadb/logs:/var/lib/mysql/logs/
+    ports:
+      - 13306:3306
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: ZoroPhpMyAdmin
+    links:
+      - db
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
+      PMA_ARBITRARY: 1
+    restart: always
+    ports:
+      - 8082:80
+
+networks:
+  laravel-exa:
+    driver: bridge
+
+volumes:
+  db:
+    driver: local
